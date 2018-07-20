@@ -1,0 +1,16 @@
+Target for storage of link files
+#target e:\linksynctest
+
+Check target for invalid .LNK files and delete them
+#fixlinks
+
+Search filter for directory name
+#mask *.
+
+Setup for link subdirectories 2 levels below
+#linksublevel 2
+
+#link d:\0
+
+#print Press enter to exit
+#pause
