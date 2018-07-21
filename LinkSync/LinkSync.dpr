@@ -24,13 +24,14 @@ type
     FParams: string;
   protected
     function AddSlash(value: string): string;
-    procedure ScanDir(aPath: string; aMask: string; isDirectory: boolean; var outList: TstringList);
+    procedure ScanDir(aPath: string; aMask: string; aScanXPDirectory: boolean; var outList: TstringList);
     function ExstractCommand(value: string): TCommandSet;
     function ExstractParams(value: string): string;
     procedure check;
     procedure run_Link;
     procedure run_FixLinks;
-    procedure Error(sMessage:string);
+    procedure Error(sMessage: string);
+    function isPathXP(aPath: string): boolean;
   public
     procedure init;
     procedure RunValue;
@@ -96,7 +97,7 @@ end;
 
 procedure TCommand.Error(sMessage: string);
 begin
-  ExitCode:=1;
+  ExitCode := 1;
   Writeln(sMessage);
   readln;
   halt;
@@ -180,6 +181,12 @@ begin
   end;
 end;
 
+function TCommand.isPathXP(aPath: string): boolean;
+begin
+  result := DirectoryExists(aPath + '\Earth nav data') or
+    FileExists(aPath + '\library.txt');
+end;
+
 procedure TCommand.run_FixLinks;
 var
   I: integer;
@@ -192,7 +199,7 @@ begin
     begin
       if not CheckLink(sl[I]) then
       begin
-        writeLn(Format('Deleted %s', [sl[I]]));
+        Writeln(Format('Deleted %s', [sl[I]]));
         System.SysUtils.DeleteFile(sl[I]);
       end;
     end;
@@ -211,6 +218,7 @@ begin
   sl := TstringList.Create;
   sl2 := TstringList.Create;
   try
+    {
     case FSubLevel of
       0:
         ;
@@ -219,11 +227,11 @@ begin
           ScanDir(FParams, FMask, true, sl);
           for I := 0 to sl.Count - 1 do
           begin
-            sLinkName := AddSlash(FTarget) + ExtractFileName(sl[I])+'.lnk';
+            sLinkName := AddSlash(FTarget) + ExtractFileName(sl[I]) + '.lnk';
             if Not FileExists(sLinkName) then
             begin
               CreateLink(sl[I], sLinkName);
-              writeLn(Format('Add %s -> %s', [sl[I], sLinkName]));
+              Writeln(Format('Add %s -> %s', [sl[I], sLinkName]));
             end;
           end;
         end;
@@ -232,19 +240,39 @@ begin
           ScanDir(FParams, '*.*', true, sl);
           for I := 0 to sl.Count - 1 do
           begin
-            ScanDir(sl[i], FMask, true, sl2);
+            ScanDir(sl[I], FMask, true, sl2);
             for i2 := 0 to sl2.Count - 1 do
             begin
-              sLinkName := AddSlash(FTarget) + ExtractFileName(sl2[i2])+'.lnk';
+              sLinkName := AddSlash(FTarget) + ExtractFileName(sl2[i2]) + '.lnk';
               if Not FileExists(sLinkName) then
               begin
                 CreateLink(sl2[i2], sLinkName);
-                writeLn(Format('Add %s -> %s', [sl2[i2], sLinkName]));
+                Writeln(Format('Add %s -> %s', [sl2[i2], sLinkName]));
               end;
             end;
           end;
         end;
     end;
+    }
+
+    sl.Clear;
+    Write('Scanning ' + FParams);
+    ScanDir(FParams, FMask, true, sl);
+    Writeln('');
+
+    for I := 0 to sl.Count - 1 do
+    begin
+      sLinkName := AddSlash(FTarget) + ExtractFileName(sl[I]) + '.lnk';
+      if Not FileExists(sLinkName) then
+      begin
+        CreateLink(sl[I], sLinkName);
+        Writeln(Format('Add %s -> %s', [sl[I], sLinkName]));
+      end;
+    end;
+    {
+    for I := 0 to sl.Count - 1 do
+      Writeln(sl[I])
+    }  
 
   finally
     sl.Free;
@@ -252,25 +280,34 @@ begin
   end;
 end;
 
-procedure TCommand.ScanDir(aPath, aMask: string; isDirectory: boolean;
-  var outList: TstringList);
+procedure TCommand.ScanDir(aPath, aMask: string; aScanXPDirectory: boolean; var outList: TstringList);
 var
   sr: TsearchRec;
   FileAttrs: integer;
 begin
-  outList.Clear;
-  if isDirectory then
-    FileAttrs := faArchive + faAnyFile
-  else
-    FileAttrs := faDirectory;
+  FileAttrs := faAnyFile;
   if System.SysUtils.findfirst(aPath + '\' + aMask, FileAttrs, sr) = 0 then
   begin
     repeat
       if (sr.Name <> '.') and (sr.Name <> '..') then
-      if (faDirectory in [sr.Attr]) and isDirectory then
-        outList.Add(aPath + '\' + sr.Name)
-      else if (not (faDirectory in [sr.Attr])) and (not isDirectory) then
-        outList.Add(aPath + '\' + sr.Name);
+        if (sr.Attr and faDirectory) <> 0 then
+        begin
+          if aScanXPDirectory then
+          begin
+            if isPathXP(aPath + '\' + sr.Name) then
+            begin
+              Write('.');
+              outList.Add(aPath + '\' + sr.Name)
+            end
+            else
+              ScanDir(aPath + '\' + sr.Name, aMask, aScanXPDirectory, outList);
+          end;
+        end
+        else
+        begin
+          if not aScanXPDirectory then
+            outList.Add(aPath + '\' + sr.Name);
+        end;
 
     until System.SysUtils.FindNext(sr) <> 0;
     System.SysUtils.FindClose(sr);
@@ -281,7 +318,7 @@ procedure TCommand.RunValue;
 begin
   case FCommand of
     cNone:
-          ;
+      ;
     cTarger:
       FTarget := FParams;
     cLink:
@@ -295,9 +332,9 @@ begin
     cMask:
       FMask := FParams;
     cPrint:
-      writeLn(FParams);
+      Writeln(FParams);
     cPause:
-      Readln;
+      readln;
   end;
 end;
 
@@ -312,8 +349,8 @@ begin
   CoInitialize(nil);
   try
     try
-      WriteLn('LinkSync version 0.1 (c) Morten Isaksen');
-      WriteLn('');
+      Writeln('XP LinkSync version 0.2 (c) Morten Isaksen');
+      Writeln('');
       command := TCommand.Create;
       command.init;
     finally
@@ -321,7 +358,7 @@ begin
     end;
   except
     on E: Exception do
-      writeLn(E.ClassName, ': ', E.Message);
+      Writeln(E.ClassName, ': ', E.Message);
   end;
 
 end.
