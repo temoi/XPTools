@@ -14,21 +14,21 @@ uses
   Winapi.Windows;
 
 type
-  TCommandSet = (cNone, cTarger, cMask, cLink, cSubLevel, cFixLinks, cPrint, cPause);
+  TXPFileCommandSet = (cNone, cTarger, cMask, cAddLinks, cSubLevel, cFixLinks, cPrint, cPause);
 
-  TCommand = class(TObject)
+  TXPFileCommand = class(TObject)
     FTarget: string;
     FMask: String;
     FSubLevel: integer;
-    FCommand: TCommandSet;
+    FCommand: TXPFileCommandSet;
     FParams: string;
   protected
     function AddSlash(value: string): string;
     procedure ScanDir(aPath: string; aMask: string; aScanXPDirectory: boolean; var outList: TstringList);
-    function ExstractCommand(value: string): TCommandSet;
+    function ExstractCommand(value: string): TXPFileCommandSet;
     function ExstractParams(value: string): string;
     procedure check;
-    procedure run_Link;
+    procedure run_AddLinks;
     procedure run_FixLinks;
     procedure Error(sMessage: string);
     function isPathXP(aPath: string): boolean;
@@ -39,7 +39,7 @@ type
   end;
 
 var
-  command: TCommand;
+  command: TXPFileCommand;
 
   { TCommand }
 
@@ -80,14 +80,14 @@ begin
   result := DirectoryExists(s);
 end;
 
-function TCommand.AddSlash(value: string): string;
+function TXPFileCommand.AddSlash(value: string): string;
 begin
   result := value;
   if (result <> '') and (result[result.Length] <> '\') then
     result := result + '\';
 end;
 
-procedure TCommand.check;
+procedure TXPFileCommand.check;
 begin
   if not DirectoryExists(AddSlash(FTarget)) then
   begin
@@ -95,7 +95,7 @@ begin
   end;
 end;
 
-procedure TCommand.Error(sMessage: string);
+procedure TXPFileCommand.Error(sMessage: string);
 begin
   ExitCode := 1;
   Writeln(sMessage);
@@ -103,7 +103,7 @@ begin
   halt;
 end;
 
-function TCommand.ExstractCommand(value: string): TCommandSet;
+function TXPFileCommand.ExstractCommand(value: string): TXPFileCommandSet;
 var
   n: integer;
   s: string;
@@ -119,8 +119,8 @@ begin
   s := s.LowerCase(s);
   if s = 'target' then
     result := cTarger
-  else if s = 'link' then
-    result := cLink
+  else if s = 'addlinks' then
+    result := cAddLinks
   else if s = 'fixlinks' then
     result := cFixLinks
   else if s = 'linksublevel' then
@@ -135,7 +135,7 @@ begin
     result := cNone;
 end;
 
-function TCommand.ExstractParams(value: string): string;
+function TXPFileCommand.ExstractParams(value: string): string;
 var
   n: integer;
 begin
@@ -149,7 +149,7 @@ begin
   end;
 end;
 
-procedure TCommand.init;
+procedure TXPFileCommand.init;
 var
   I: integer;
   sl: TstringList;
@@ -181,13 +181,13 @@ begin
   end;
 end;
 
-function TCommand.isPathXP(aPath: string): boolean;
+function TXPFileCommand.isPathXP(aPath: string): boolean;
 begin
   result := DirectoryExists(aPath + '\Earth nav data') or
     FileExists(aPath + '\library.txt');
 end;
 
-procedure TCommand.run_FixLinks;
+procedure TXPFileCommand.run_FixLinks;
 var
   I: integer;
   sl: TstringList;
@@ -208,7 +208,7 @@ begin
   end;
 end;
 
-procedure TCommand.run_Link;
+procedure TXPFileCommand.run_AddLinks;
 var
   I, i2: integer;
   sl, sl2: TstringList;
@@ -280,7 +280,7 @@ begin
   end;
 end;
 
-procedure TCommand.ScanDir(aPath, aMask: string; aScanXPDirectory: boolean; var outList: TstringList);
+procedure TXPFileCommand.ScanDir(aPath, aMask: string; aScanXPDirectory: boolean; var outList: TstringList);
 var
   sr: TsearchRec;
   FileAttrs: integer;
@@ -314,15 +314,15 @@ begin
   end;
 end;
 
-procedure TCommand.RunValue;
+procedure TXPFileCommand.RunValue;
 begin
   case FCommand of
     cNone:
       ;
     cTarger:
       FTarget := FParams;
-    cLink:
-      run_Link;
+    cAddLinks:
+      run_AddLinks;
     cFixLinks:
       run_FixLinks;
     cSubLevel:
@@ -338,7 +338,7 @@ begin
   end;
 end;
 
-procedure TCommand.setValue(sValue: string);
+procedure TXPFileCommand.setValue(sValue: string);
 begin
   FCommand := ExstractCommand(sValue);
   FParams := ExstractParams(sValue);
@@ -351,7 +351,7 @@ begin
     try
       Writeln('XP LinkSync version 0.2 (c) Morten Isaksen');
       Writeln('');
-      command := TCommand.Create;
+      command := TXPFileCommand.Create;
       command.init;
     finally
       command.Free;
