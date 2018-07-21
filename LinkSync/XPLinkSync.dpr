@@ -1,4 +1,4 @@
-program LinkSync;
+program XPLinkSync;
 
 {$APPTYPE CONSOLE}
 
