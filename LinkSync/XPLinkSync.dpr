@@ -32,6 +32,7 @@ type
     procedure run_FixLinks;
     procedure Error(sMessage: string);
     function isPathXP(aPath: string): boolean;
+    function isDirNameValid(aName: string): boolean;
   public
     procedure init;
     procedure RunValue;
@@ -77,7 +78,7 @@ begin
   PFile.Load(PWidechar(PathLink), 0);
   SLink.GetPath(FilePath, 255, FindData, 0);
   s := FilePath;
-  result := DirectoryExists(s);
+  result := command.isDirNameValid(s) and DirectoryExists(s);
 end;
 
 function TXPFileCommand.AddSlash(value: string): string;
@@ -181,6 +182,11 @@ begin
   end;
 end;
 
+function TXPFileCommand.isDirNameValid(aName: string): boolean;
+begin
+  result := not SameText('.removed', ExtractFileExt(aName));
+end;
+
 function TXPFileCommand.isPathXP(aPath: string): boolean;
 begin
   result := DirectoryExists(aPath + '\Earth nav data') or
@@ -219,40 +225,40 @@ begin
   sl2 := TstringList.Create;
   try
     {
-    case FSubLevel of
+      case FSubLevel of
       0:
-        ;
+      ;
       1:
-        begin
-          ScanDir(FParams, FMask, true, sl);
-          for I := 0 to sl.Count - 1 do
-          begin
-            sLinkName := AddSlash(FTarget) + ExtractFileName(sl[I]) + '.lnk';
-            if Not FileExists(sLinkName) then
-            begin
-              CreateLink(sl[I], sLinkName);
-              Writeln(Format('Add %s -> %s', [sl[I], sLinkName]));
-            end;
-          end;
-        end;
+      begin
+      ScanDir(FParams, FMask, true, sl);
+      for I := 0 to sl.Count - 1 do
+      begin
+      sLinkName := AddSlash(FTarget) + ExtractFileName(sl[I]) + '.lnk';
+      if Not FileExists(sLinkName) then
+      begin
+      CreateLink(sl[I], sLinkName);
+      Writeln(Format('Add %s -> %s', [sl[I], sLinkName]));
+      end;
+      end;
+      end;
       2:
-        begin
-          ScanDir(FParams, '*.*', true, sl);
-          for I := 0 to sl.Count - 1 do
-          begin
-            ScanDir(sl[I], FMask, true, sl2);
-            for i2 := 0 to sl2.Count - 1 do
-            begin
-              sLinkName := AddSlash(FTarget) + ExtractFileName(sl2[i2]) + '.lnk';
-              if Not FileExists(sLinkName) then
-              begin
-                CreateLink(sl2[i2], sLinkName);
-                Writeln(Format('Add %s -> %s', [sl2[i2], sLinkName]));
-              end;
-            end;
-          end;
-        end;
-    end;
+      begin
+      ScanDir(FParams, '*.*', true, sl);
+      for I := 0 to sl.Count - 1 do
+      begin
+      ScanDir(sl[I], FMask, true, sl2);
+      for i2 := 0 to sl2.Count - 1 do
+      begin
+      sLinkName := AddSlash(FTarget) + ExtractFileName(sl2[i2]) + '.lnk';
+      if Not FileExists(sLinkName) then
+      begin
+      CreateLink(sl2[i2], sLinkName);
+      Writeln(Format('Add %s -> %s', [sl2[i2], sLinkName]));
+      end;
+      end;
+      end;
+      end;
+      end;
     }
 
     sl.Clear;
@@ -270,9 +276,9 @@ begin
       end;
     end;
     {
-    for I := 0 to sl.Count - 1 do
+      for I := 0 to sl.Count - 1 do
       Writeln(sl[I])
-    }  
+    }
 
   finally
     sl.Free;
@@ -289,7 +295,7 @@ begin
   if System.SysUtils.findfirst(aPath + '\' + aMask, FileAttrs, sr) = 0 then
   begin
     repeat
-      if (sr.Name <> '.') and (sr.Name <> '..') then
+      if (sr.Name <> '.') and (sr.Name <> '..') and isDirNameValid(sr.Name) then
         if (sr.Attr and faDirectory) <> 0 then
         begin
           if aScanXPDirectory then
